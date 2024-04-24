@@ -1,9 +1,16 @@
 package com.byteryse;
 
+import com.byteryse.Database.DatabaseController;
+
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 
 public class SlashCommands extends ListenerAdapter {
+    private DatabaseController dbCon;
+
+    public SlashCommands(DatabaseController dbCon) {
+        this.dbCon = dbCon;
+    }
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
