@@ -1,1 +1,1 @@
-worker: java $JAVA_OPTS -Dserver.port=$PORT -cp target/classes:target/dependency/* com.byteryse.Application
+worker: java $JAVA_OPTS -cp target/classes:target/dependency/* com.byteryse.Application
