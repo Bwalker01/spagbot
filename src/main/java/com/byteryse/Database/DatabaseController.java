@@ -5,6 +5,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 
 public class DatabaseController {
     private final Connection connection;
@@ -25,25 +26,31 @@ public class DatabaseController {
         }
     }
 
-    public ResultSet executeSQL(String sql, String... params) {
+    public ArrayList<ArrayList<String>> executeSQL(String sql, String... params) {
         try {
             PreparedStatement statement = this.connection.prepareStatement(sql);
             int i = 1;
             for (String param : params) {
-                try {
-                    int intParam = Integer.parseInt(param);
-                    statement.setInt(i, intParam);
-                } catch (NumberFormatException e) {
-                    statement.setString(i, param);
-                }
+                statement.setString(i, param);
                 i++;
             }
-            return statement.executeQuery();
+            ResultSet resultSet = statement.executeQuery();
+            int columnCount = resultSet.getMetaData().getColumnCount();
+            ArrayList<ArrayList<String>> results = new ArrayList<>();
+            while (resultSet.next()) {
+                int x = 1;
+                ArrayList<String> row = new ArrayList<>();
+                while (x <= columnCount) {
+                    row.add(resultSet.getString(x));
+                    x++;
+                }
+                results.add(row);
+            }
+            return results;
         } catch (SQLException e) {
             System.err.println(e.getMessage());
             System.err.println(e.getStackTrace());
             return null;
         }
-
     }
 }

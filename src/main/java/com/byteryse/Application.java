@@ -11,6 +11,7 @@ public class Application {
         JDA api = JDABuilder.createDefault(System.getenv("DISCORD_TOKEN")).build();
         DatabaseController dbCon = new DatabaseController();
         api.addEventListener(new SlashCommands(dbCon));
+        api.addEventListener(new EventListeners(dbCon));
 
     }
 }
