@@ -128,13 +128,12 @@ public class SlashCommands extends ListenerAdapter {
     }
 
     private void echo(SlashCommandInteractionEvent event) {
+        String reply = "";
         for (int i = 0; i < event.getOption("times").getAsInt(); i++) {
-            event.reply(String.format("%s\n", event.getOption("message").getAsString())).queue();
+            reply += event.getOption("message").getAsString() + "\n";
         }
+        event.reply(reply).queue();
     }
-
-    // private void gameRole(SlashCommandInteractionEvent event) {
-    // }
 
     private void newGame(SlashCommandInteractionEvent event) {
         event.deferReply().setEphemeral(true).queue();
