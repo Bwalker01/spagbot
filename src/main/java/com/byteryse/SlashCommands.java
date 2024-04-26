@@ -1,17 +1,27 @@
 package com.byteryse;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Random;
+import java.util.stream.Collectors;
 
 import com.byteryse.Database.DatabaseController;
 
+import kotlin.Pair;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Mentions;
+import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.UserSnowflake;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.component.EntitySelectInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.interactions.components.selections.EntitySelectMenu;
 import net.dv8tion.jda.api.interactions.components.selections.SelectOption;
 import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu;
+import net.dv8tion.jda.api.interactions.components.selections.EntitySelectMenu.SelectTarget;
 
 public class SlashCommands extends ListenerAdapter {
     private DatabaseController dbCon;
@@ -31,9 +41,9 @@ public class SlashCommands extends ListenerAdapter {
             case "echo":
                 echo(event);
                 break;
-            // case "game":
-            // gameRole(event);
-            // break;
+            case "game":
+                game(event);
+                break;
             case "newgame":
                 newGame(event);
                 break;
@@ -118,13 +128,12 @@ public class SlashCommands extends ListenerAdapter {
     }
 
     private void echo(SlashCommandInteractionEvent event) {
+        String reply = "";
         for (int i = 0; i < event.getOption("times").getAsInt(); i++) {
-            event.reply(String.format("%s\n", event.getOption("message").getAsString())).queue();
+            reply += event.getOption("message").getAsString() + "\n";
         }
+        event.reply(reply).queue();
     }
-
-    // private void gameRole(SlashCommandInteractionEvent event) {
-    // }
 
     private void newGame(SlashCommandInteractionEvent event) {
         event.deferReply().setEphemeral(true).queue();
@@ -146,8 +155,73 @@ public class SlashCommands extends ListenerAdapter {
         event.getHook().sendMessage(String.format("New role created for %s.", gameName)).setEphemeral(true).queue();
     }
 
-    // private void game(SlashCommandInteractionEvent event) {
-    // event.deferReply().queue();
-    // }
+    private void game(SlashCommandInteractionEvent event) {
+        switch (event.getOption("option").getAsString()) {
+            case "random":
+                event.reply("Who do you want to find a random game with?")
+                        .addActionRow(
+                                EntitySelectMenu.create("random-game", SelectTarget.USER)
+                                        .setMaxValues(25)
+                                        .setMinValues(0)
+                                        .build())
+                        .setEphemeral(true).queue();
+                break;
+            case "common":
+                event.reply("Who do you want to find all common games with?")
+                        .addActionRow(
+                                EntitySelectMenu.create("common-games", SelectTarget.USER)
+                                        .setMaxValues(25)
+                                        .setMinValues(0)
+                                        .build())
+                        .setEphemeral(true).queue();
+                break;
+            default:
+                event.reply("That's not a valid option.").queue();
+        }
+    }
 
+    @Override
+    public void onEntitySelectInteraction(EntitySelectInteractionEvent event) {
+        ArrayList<ArrayList<String>> rawRoles = dbCon
+                .executeSQL("SELECT role_id, game_name FROM game_roles WHERE guild_id = ?", event.getGuild().getId());
+        List<String> gameRoles = rawRoles.stream().map((result) -> result.get(0)).toList();
+        HashMap<String, String> gameNames = new HashMap<>();
+        for (ArrayList<String> game : rawRoles) {
+            gameNames.put(game.get(0), game.get(1));
+        }
+        List<String> userGames = event.getMember().getRoles().stream()
+                .map((result) -> result.getId())
+                .filter(gameRoles::contains).toList();
+        ArrayList<List<String>> othersGames = new ArrayList<>();
+        for (Member member : event.getMentions().getMembers()) {
+            othersGames.add(member.getRoles().stream().map((result) -> result.getId()).toList());
+        }
+        for (List<String> role : othersGames) {
+            userGames = userGames.stream().filter(role::contains).toList();
+        }
+
+        if (userGames.isEmpty()) {
+            String reply = event.getMember().getAsMention();
+            for (Member member : event.getMentions().getMembers()) {
+                reply += " " + member.getAsMention();
+            }
+            event.reply(reply + " don't share any games!").queue();
+        } else if (event.getComponentId().equals("common-games")) {
+            String reply = event.getMember().getAsMention();
+            for (Member member : event.getMentions().getMembers()) {
+                reply += " " + member.getAsMention();
+            }
+            reply += " common games are: \n"
+                    + userGames.stream().map((game) -> gameNames.get(game)).collect(Collectors.joining("\n"));
+            event.reply(reply)
+                    .queue();
+        } else if (event.getComponentId().equals("random-game")) {
+            String reply = event.getMember().getAsMention();
+            for (Member member : event.getMentions().getMembers()) {
+                reply += " " + member.getAsMention();
+            }
+            reply += " could play: " + gameNames.get(userGames.get(new Random().nextInt(userGames.size())));
+            event.reply(reply + "!").queue();
+        }
+    }
 }
